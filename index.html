@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>現場用 流れる文字サイネージ（698*176）</title>
+    <title>現場用 流れる文字サイネージ（698*176・見切れ修正版）</title>
     <style>
         /* 全体設定：焼き付き防止のため黒背景 */
         body {
@@ -111,27 +111,29 @@
             position: relative;
             box-sizing: border-box;
             display: none;
-            /* 設置確認用（必要に応じて border を消してください） */
-            border: 1px solid #333; 
+            border: 1px solid #333; /* 設置確認用 */
         }
 
         /* 文字が流れるレーン */
         .marquee-track {
             position: absolute;
             white-space: nowrap;
-            height: 176px;
+            height: 100%;
             display: flex;
-            align-items: center;
+            align-items: center; /* 縦方向の中央揃えを保証 */
             will-change: transform;
         }
 
-        /* 流れる文字本体（176pxの高さに合わせて最適化） */
+        /* 流れる文字本体 */
         .marquee-content {
-            font-size: 154px; 
+            font-size: 130px; /* 見切れないように154pxから130pxに縮小 */
             font-weight: 900;
             line-height: 1;
-            padding-right: 698px; /* 新しい横幅に合わせたループ用余白 */
+            padding-right: 698px; /* ループ用余白 */
             color: #ffffff;
+            display: flex;
+            align-items: center; /* 縦方向の中央揃え */
+            height: 100%;
         }
     </style>
 </head>
@@ -180,11 +182,9 @@
         let speed = parseFloat(speedParam);
 
         if (textParam) {
-            // サイネージモード
             signageWrapper.style.display = 'block';
             startSignage(decodeURIComponent(textParam));
         } else {
-            // 設定モード
             adminScreen.style.display = 'block';
         }
 
