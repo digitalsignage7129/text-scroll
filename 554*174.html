@@ -111,7 +111,7 @@
             background-color: #000000;
             overflow: hidden;
             display: none;
-            border: 1px solid #333; /* 位置確認用の枠 */
+            border: 1px solid #333;
         }
 
         /* 文字が流れるレーン */
@@ -128,10 +128,11 @@
             display: inline-block;
             font-size: 90px;
             font-weight: 900;
-            line-height: 174px; /* 縦174pxに対して中央配置 */
-            padding-right: 554px; /* 画面幅分の余白 */
+            line-height: 174px;
+            padding-right: 554px; /* ループ用の余白（画面幅分） */
             color: #ffffff;
             vertical-align: middle;
+            white-space: nowrap; /* 意図しない改行を防止 */
         }
     </style>
 </head>
@@ -228,29 +229,35 @@
         }
 
         function startSignage(text) {
-            track.innerHTML = '<div class="marquee-content">' + text + '</div><div class="marquee-content">' + text + '</div>';
+            // 改行などをスペースに変換して表示崩れを防ぐ
+            var cleanText = text.replace(/[\r\n]+/g, ' ');
+            track.innerHTML = '<div class="marquee-content">' + cleanText + '</div><div class="marquee-content">' + cleanText + '</div>';
 
-            setTimeout(function() {
-                var firstChildWidth = track.children[0].offsetWidth;
-                if (!firstChildWidth || firstChildWidth < 10) {
-                    firstChildWidth = text.length * 90 + 554; 
-                }
-                tick(firstChildWidth);
-            }, 100);
+            tick();
         }
 
-        function tick(loopWidth) {
-            currentX -= speed;
-            if (Math.abs(currentX) >= loopWidth) {
-                currentX = 0;
+        function tick() {
+            var firstChild = track.children[0];
+            
+            if (firstChild) {
+                // 実際の文字要素の横幅を正確に取得（フォント読み込み遅延にも対応）
+                var loopWidth = firstChild.getBoundingClientRect().width;
+
+                if (loopWidth > 0) {
+                    currentX -= speed;
+                    
+                    // 1周分の長さ（文字幅＋右余白）を超えたら先頭へ引き戻す
+                    if (Math.abs(currentX) >= loopWidth) {
+                        currentX += loopWidth; // 0にリセットせず余りを残すことでコマ落ちを防止
+                    }
+                    
+                    track.style.transform = 'translate3d(' + currentX + 'px, 0px, 0px)';
+                    track.style.webkitTransform = 'translate3d(' + currentX + 'px, 0px, 0px)';
+                }
             }
-            track.style.transform = 'translate3d(' + currentX + 'px, 0px, 0px)';
-            track.style.webkitTransform = 'translate3d(' + currentX + 'px, 0px, 0px)';
             
             var runner = window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb) { setTimeout(cb, 16); };
-            runner(function() {
-                tick(loopWidth);
-            });
+            runner(tick);
         }
     </script>
 </body>
