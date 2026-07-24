@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現場用 流れる文字サイネージ（554*174最適化版）</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111111;
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            overflow: hidden;
+        }
+
+        /* -------------------------------------------
+           1. URL生成・管理画面
+        ------------------------------------------- */
+        .admin-screen {
+            background: #111;
+            border: 1px solid #333;
+            padding: 30px;
+            width: 600px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            display: none;
+            color: #ffffff;
+            margin: 50px auto 0 auto;
+        }
+        .admin-screen h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 2px solid #0088ff;
+            padding-bottom: 8px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #000;
+        }
+        .form-group select {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px;
+            background: #fff;
+            color: #000;
+        }
+        .gen-btn {
+            width: 100%;
+            font-size: 18px;
+            padding: 12px;
+            background: #0088ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        .result-area {
+            margin-top: 25px;
+            padding: 15px;
+            background: #222;
+            border: 1px dashed #555;
+            display: none;
+        }
+        .result-url {
+            word-break: break-all;
+            background: #000;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ffcc;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+        }
+        .copy-btn {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* -------------------------------------------
+           2. サイネージ表示エリア（554*174 固定）
+        ------------------------------------------- */
+        .signage-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 554px;
+            height: 174px;
+            margin-top: -87px;  /* 174の半分 */
+            margin-left: -277px; /* 554の半分 */
+            background-color: #000000;
+            overflow: hidden;
+            display: none;
+            border: 1px solid #333; /* 位置確認用の枠 */
+        }
+
+        /* 文字が流れるレーン */
+        .marquee-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 174px;
+            white-space: nowrap;
+        }
+
+        /* 流れる文字本体 */
+        .marquee-content {
+            display: inline-block;
+            font-size: 90px;
+            font-weight: 900;
+            line-height: 174px; /* 縦174pxに対して中央配置 */
+            padding-right: 554px; /* 画面幅分の余白 */
+            color: #ffffff;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-screen" id="adminScreen">
+        <h2>工事現場サイネージ URL生成 (554*174)</h2>
+        <div class="form-group">
+            <label for="textInput">流したい文字</label>
+            <input type="text" id="textInput" value="【安全第一】 本日の作業予定：足場解体工事（午前中） 通行時にはご注意ください。">
+        </div>
+        <div class="form-group">
+            <label for="speedSelect">流れる速度</label>
+            <select id="speedSelect">
+                <option value="1.5">遅め</option>
+                <option value="2.5" selected>標準</option>
+                <option value="4.0">速め</option>
+                <option value="6.0">超速め</option>
+            </select>
+        </div>
+        <button class="gen-btn" onclick="generateURL()">専用URLを発行する</button>
+
+        <div class="result-area" id="resultArea">
+            <label>▼ サイネージ端末に登録するURL</label>
+            <div class="result-url" id="resultUrl"></div>
+            <button class="copy-btn" onclick="copyURL()">URLをコピー</button>
+        </div>
+    </div>
+
+    <div class="signage-wrapper" id="signageWrapper">
+        <div class="marquee-track" id="marqueeTrack"></div>
+    </div>
+
+    <script>
+        function getQueryParam(name) {
+            var pair;
+            var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) {
+                pair = decodeURIComponent(r[2]);
+                try {
+                    return decodeURIComponent(pair);
+                } catch(e) {
+                    return pair;
+                }
+            }
+            return null;
+        }
+
+        var textParam = getQueryParam('text');
+        var speedParam = getQueryParam('speed') || '2.5';
+
+        var adminScreen = document.getElementById('adminScreen');
+        var signageWrapper = document.getElementById('signageWrapper');
+        var track = document.getElementById('marqueeTrack');
+
+        var currentX = 0;
+        var speed = parseFloat(speedParam);
+
+        if (textParam) {
+            signageWrapper.style.display = 'block';
+            startSignage(textParam);
+        } else {
+            adminScreen.style.display = 'block';
+        }
+
+        function generateURL() {
+            var textValue = document.getElementById('textInput').value;
+            var speedValue = document.getElementById('speedSelect').value;
+
+            if (!textValue) {
+                alert('文字を入力してください');
+                return;
+            }
+
+            var baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            var generatedUrl = baseUrl + '?text=' + encodeURIComponent(textValue) + '&speed=' + speedValue;
+
+            document.getElementById('resultUrl').innerText = generatedUrl;
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        function copyURL() {
+            var urlText = document.getElementById('resultUrl').innerText;
+            
+            var textarea = document.createElement('textarea');
+            textarea.value = urlText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            alert('URLをコピーしました！サイネージ端末に設定してください。');
+        }
+
+        function startSignage(text) {
+            track.innerHTML = '<div class="marquee-content">' + text + '</div><div class="marquee-content">' + text + '</div>';
+
+            setTimeout(function() {
+                var firstChildWidth = track.children[0].offsetWidth;
+                if (!firstChildWidth || firstChildWidth < 10) {
+                    firstChildWidth = text.length * 90 + 554; 
+                }
+                tick(firstChildWidth);
+            }, 100);
+        }
+
+        function tick(loopWidth) {
+            currentX -= speed;
+            if (Math.abs(currentX) >= loopWidth) {
+                currentX = 0;
+            }
+            track.style.transform = 'translate3d(' + currentX + 'px, 0px, 0px)';
+            track.style.webkitTransform = 'translate3d(' + currentX + 'px, 0px, 0px)';
+            
+            var runner = window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb) { setTimeout(cb, 16); };
+            runner(function() {
+                tick(loopWidth);
+            });
+        }
+    </script>
+</body>
+</html>
