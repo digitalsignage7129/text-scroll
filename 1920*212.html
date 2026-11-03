@@ -374,6 +374,15 @@
             black:  { from: '#0a0a0a', to: '#1f1f1f', accent: '#d9bf8c', badgeText: '#0a0a0a', text: '#f5f0e6', rgb: '10,10,10' }
         };
 
+        // 管理画面での配色名・プレビュー更新タイマー（起動処理より前に定義しておく）
+        var THEME_NAMES = {
+            navy: 'ネイビー × ゴールド',
+            forest: 'フォレスト × ミント',
+            slate: 'スレート × シアン',
+            black: 'ブラック × シャンパン'
+        };
+        var previewTimer = null;
+
         function getQueryParam(name) {
             var pair;
             var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
@@ -414,14 +423,6 @@
         }
 
         // ---------- 管理画面：プレビュー ----------
-        var THEME_NAMES = {
-            navy: 'ネイビー × ゴールド',
-            forest: 'フォレスト × ミント',
-            slate: 'スレート × シアン',
-            black: 'ブラック × シャンパン'
-        };
-        var previewTimer = null;
-
         function buildPreviewUrl(theme) {
             var text = document.getElementById('textInput').value || '　';
             var speedValue = document.getElementById('speedSelect').value;
