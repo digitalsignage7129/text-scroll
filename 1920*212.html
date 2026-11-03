@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>近隣向け 流れる文字サイネージ（1920*212 デザイン版）</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111111;
+            font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Noto Sans CJK JP", Meiryo, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        /* -------------------------------------------
+           1. URL生成・管理画面
+        ------------------------------------------- */
+        .admin-screen {
+            background: #111;
+            border: 1px solid #333;
+            padding: 30px;
+            width: 1000px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            display: none;
+            color: #ffffff;
+            margin: 40px auto 0 auto;
+        }
+        .admin-screen h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 2px solid #0088ff;
+            padding-bottom: 8px;
+        }
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .form-group input[type="text"] {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #000;
+        }
+        .form-group select {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px;
+            background: #fff;
+            color: #000;
+        }
+        .row { display: flex; }
+        .row .form-group { flex: 1; }
+        .row .form-group + .form-group { margin-left: 12px; }
+        /* プレビュー（本番と同じ表示を縮小して埋め込み） */
+        .preview-label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .preview-box {
+            position: relative;
+            width: 100%;
+            height: 106px;
+            box-sizing: border-box;
+            background: #000;
+            border: 1px solid #333;
+            overflow: hidden;
+            margin-bottom: 22px;
+        }
+        .preview-box iframe,
+        .theme-item iframe {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 212px;
+            border: 0;
+            -webkit-transform-origin: 0 0;
+            transform-origin: 0 0;
+            pointer-events: none;
+        }
+        .preview-box iframe { -webkit-transform: scale(0.4885); transform: scale(0.4885); }
+        .theme-item iframe  { -webkit-transform: scale(0.236);  transform: scale(0.236); }
+        .theme-grid {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -6px 14px -6px;
+        }
+        .theme-item {
+            position: relative;
+            width: calc(50% - 12px);
+            height: 54px;
+            margin: 6px;
+            box-sizing: border-box;
+            border: 2px solid #333;
+            background: #000;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .theme-item.selected { border-color: #0088ff; }
+        .theme-name {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            padding: 1px 8px;
+            font-size: 11px;
+            background: rgba(0,0,0,0.65);
+            color: #fff;
+            z-index: 2;
+        }
+        .gen-btn {
+            width: 100%;
+            font-size: 18px;
+            padding: 12px;
+            background: #0088ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        .result-area {
+            margin-top: 25px;
+            padding: 15px;
+            background: #222;
+            border: 1px dashed #555;
+            display: none;
+        }
+        .result-url {
+            word-break: break-all;
+            background: #000;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #00ffcc;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+        }
+        .copy-btn {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* -------------------------------------------
+           2. サイネージ表示エリア（1920*212 固定）
+        ------------------------------------------- */
+        .signage-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 1920px;
+            height: 212px;
+            margin-top: -106px;   /* 212の半分 */
+            margin-left: -960px;  /* 1920の半分 */
+            background-color: #0b1d3a;
+            overflow: hidden;
+            display: none;
+        }
+
+        /* 上下の細いアクセントライン */
+        .line-top, .line-bottom {
+            position: absolute;
+            left: 0;
+            width: 1920px;
+            height: 4px;
+            z-index: 5;
+        }
+        .line-top { top: 0; }
+        .line-bottom { bottom: 0; }
+
+        /* 左のラベル（矢印型） */
+        .badge {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 340px;
+            height: 212px;
+            z-index: 4;
+            text-align: center;
+        }
+        .badge-arrow {
+            position: absolute;
+            top: 0;
+            left: 340px;
+            width: 0;
+            height: 0;
+            border-top: 106px solid transparent;
+            border-bottom: 106px solid transparent;
+            border-left: 36px solid #f2c14e;
+            z-index: 4;
+        }
+        .badge-main {
+            display: block;
+            padding-top: 58px;
+            font-size: 62px;
+            font-weight: 800;
+            line-height: 70px;
+            letter-spacing: 0.12em;
+            text-indent: 0.12em;
+        }
+        .badge-sub {
+            display: block;
+            margin-top: 10px;
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 26px;
+            letter-spacing: 0.32em;
+            text-indent: 0.32em;
+            opacity: 0.8;
+        }
+
+        /* 文字が流れるエリア */
+        .marquee-area {
+            position: absolute;
+            top: 0;
+            left: 376px;           /* ラベル340 + 矢印36 */
+            width: 1544px;
+            height: 212px;
+            overflow: hidden;
+        }
+        .marquee-track {
+            display: flex;
+            width: max-content;
+            height: 212px;
+            white-space: nowrap;
+            will-change: transform;
+        }
+        .marquee-content {
+            display: inline-block;
+            box-sizing: content-box;
+            min-width: 1544px;     /* 短い文章でも1周分が表示幅を下回らない（途切れ防止） */
+            font-size: 100px;
+            font-weight: 700;
+            line-height: 212px;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            flex-shrink: 0;
+            color: #ffffff;
+        }
+        .sep {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            margin: 0 100px;
+            vertical-align: middle;
+            -webkit-transform: rotate(45deg);
+            transform: rotate(45deg);
+        }
+
+        /* 左右のフェード（端で文字がすっと消える） */
+        .fade-l, .fade-r {
+            position: absolute;
+            top: 0;
+            width: 90px;
+            height: 212px;
+            z-index: 3;
+        }
+        .fade-l { left: 376px; }
+        .fade-r { left: 1830px; }
+
+        /* CSSによる完全同期アニメーション */
+        @-webkit-keyframes marqueeAnimation {
+            0%   { -webkit-transform: translate3d(0, 0, 0); }
+            100% { -webkit-transform: translate3d(-50%, 0, 0); }
+        }
+        @keyframes marqueeAnimation {
+            0%   { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .is-animating {
+            -webkit-animation-name: marqueeAnimation;
+            animation-name: marqueeAnimation;
+            -webkit-animation-timing-function: linear;
+            animation-timing-function: linear;
+            -webkit-animation-iteration-count: infinite;
+            animation-iteration-count: infinite;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-screen" id="adminScreen">
+        <h2>近隣向けサイネージ URL生成 (1920*212)</h2>
+        <div class="preview-label">プレビュー（入力すると自動で反映されます）</div>
+        <div class="preview-box"><iframe id="previewFrame" scrolling="no"></iframe></div>
+        <div class="form-group">
+            <label for="textInput">流したい文字</label>
+            <input type="text" id="textInput" value="ご近隣の皆さまへ　工事期間中はご迷惑をおかけしております。ご理解とご協力に心より感謝申し上げます。">
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="labelInput">ラベル（左の見出し）</label>
+                <input type="text" id="labelInput" value="お知らせ">
+            </div>
+            <div class="form-group">
+                <label for="subInput">ラベル下の英字</label>
+                <input type="text" id="subInput" value="INFORMATION">
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="themeSelect">配色</label>
+                <select id="themeSelect">
+                    <option value="navy" selected>ネイビー × ゴールド</option>
+                    <option value="forest">フォレスト × ミント</option>
+                    <option value="slate">スレート × シアン</option>
+                    <option value="black">ブラック × シャンパン</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="speedSelect">流れる速度</label>
+                <select id="speedSelect">
+                    <option value="1.5">遅め</option>
+                    <option value="2.5" selected>標準</option>
+                    <option value="4.0">速め</option>
+                    <option value="6.0">超速め</option>
+                </select>
+            </div>
+        </div>
+        <div class="preview-label">配色の比較（クリックで選択）</div>
+        <div class="theme-grid" id="themeGrid"></div>
+        <button class="gen-btn" onclick="generateURL()">専用URLを発行する</button>
+
+        <div class="result-area" id="resultArea">
+            <label>▼ サイネージ端末に登録するURL</label>
+            <div class="result-url" id="resultUrl"></div>
+            <button class="copy-btn" onclick="copyURL()">URLをコピー</button>
+        </div>
+    </div>
+
+    <div class="signage-wrapper" id="signageWrapper">
+        <div class="line-top" id="lineTop"></div>
+        <div class="line-bottom" id="lineBottom"></div>
+
+        <div class="badge" id="badge">
+            <span class="badge-main" id="badgeMain"></span>
+            <span class="badge-sub" id="badgeSub"></span>
+        </div>
+        <div class="badge-arrow" id="badgeArrow"></div>
+
+        <div class="fade-l" id="fadeL"></div>
+        <div class="fade-r" id="fadeR"></div>
+
+        <div class="marquee-area">
+            <div class="marquee-track" id="marqueeTrack"></div>
+        </div>
+    </div>
+
+    <script>
+        var MARQUEE_WIDTH = 1544;   // 流れるエリアの幅
+        var FONT_SIZE = 100;        // CSSの .marquee-content font-size と揃えること
+        var CHAR_WIDTH = FONT_SIZE * 1.04; // 1文字あたりの幅（字間込み・全角基準）
+        var GAP = 200 + 18;         // 文章間の隙間（ダイヤ飾りの左右余白 + 本体幅）
+
+        // 配色テーマ
+        var THEMES = {
+            navy:   { from: '#0b1d3a', to: '#173a6b', accent: '#f2c14e', badgeText: '#0b1d3a', text: '#ffffff', rgb: '11,29,58' },
+            forest: { from: '#0b2a21', to: '#17503a', accent: '#8fd8ae', badgeText: '#0b2a21', text: '#ffffff', rgb: '11,42,33' },
+            slate:  { from: '#14181e', to: '#262e38', accent: '#4fd1c5', badgeText: '#0d1216', text: '#ffffff', rgb: '20,24,30' },
+            black:  { from: '#0a0a0a', to: '#1f1f1f', accent: '#d9bf8c', badgeText: '#0a0a0a', text: '#f5f0e6', rgb: '10,10,10' }
+        };
+
+        function getQueryParam(name) {
+            var pair;
+            var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) {
+                pair = decodeURIComponent(r[2]);
+                try {
+                    return decodeURIComponent(pair);
+                } catch(e) {
+                    return pair;
+                }
+            }
+            return null;
+        }
+
+        var textParam  = getQueryParam('text');
+        var speedParam = getQueryParam('speed') || '2.5';
+        var labelParam = getQueryParam('label');
+        var subParam   = getQueryParam('sub');
+        var themeParam = getQueryParam('theme') || 'navy';
+
+        var adminScreen = document.getElementById('adminScreen');
+        var signageWrapper = document.getElementById('signageWrapper');
+        var track = document.getElementById('marqueeTrack');
+
+        var speed = parseFloat(speedParam);
+        if (!(speed > 0)) speed = 2.5;
+
+        if (textParam) {
+            signageWrapper.style.display = 'block';
+            applyTheme(THEMES[themeParam] || THEMES.navy);
+            document.getElementById('badgeMain').textContent = (labelParam !== null && labelParam !== '') ? labelParam : 'お知らせ';
+            document.getElementById('badgeSub').textContent  = (subParam !== null) ? subParam : 'INFORMATION';
+            startSignage(textParam);
+        } else {
+            adminScreen.style.display = 'block';
+            initPreview();
+        }
+
+        // ---------- 管理画面：プレビュー ----------
+        var THEME_NAMES = {
+            navy: 'ネイビー × ゴールド',
+            forest: 'フォレスト × ミント',
+            slate: 'スレート × シアン',
+            black: 'ブラック × シャンパン'
+        };
+        var previewTimer = null;
+
+        function buildPreviewUrl(theme) {
+            var text = document.getElementById('textInput').value || '　';
+            var speedValue = document.getElementById('speedSelect').value;
+            var labelValue = document.getElementById('labelInput').value;
+            var subValue = document.getElementById('subInput').value;
+            return window.location.pathname +
+                '?text=' + encodeURIComponent(text) +
+                '&speed=' + speedValue +
+                '&label=' + encodeURIComponent(labelValue) +
+                '&sub=' + encodeURIComponent(subValue) +
+                '&theme=' + theme;
+        }
+
+        function refreshPreview() {
+            var theme = document.getElementById('themeSelect').value;
+            document.getElementById('previewFrame').src = buildPreviewUrl(theme);
+
+            var items = document.getElementById('themeGrid').children;
+            for (var i = 0; i < items.length; i++) {
+                var key = items[i].getAttribute('data-theme');
+                items[i].getElementsByTagName('iframe')[0].src = buildPreviewUrl(key);
+                items[i].className = 'theme-item' + (key === theme ? ' selected' : '');
+            }
+        }
+
+        function schedulePreview() {
+            if (previewTimer) clearTimeout(previewTimer);
+            previewTimer = setTimeout(refreshPreview, 400);
+        }
+
+        function initPreview() {
+            var grid = document.getElementById('themeGrid');
+            Object.keys(THEMES).forEach(function (key) {
+                var item = document.createElement('div');
+                item.className = 'theme-item';
+                item.setAttribute('data-theme', key);
+                var frame = document.createElement('iframe');
+                frame.setAttribute('scrolling', 'no');
+                var name = document.createElement('span');
+                name.className = 'theme-name';
+                name.textContent = THEME_NAMES[key];
+                item.appendChild(frame);
+                item.appendChild(name);
+                item.onclick = function () {
+                    document.getElementById('themeSelect').value = key;
+                    refreshPreview();
+                };
+                grid.appendChild(item);
+            });
+
+            ['textInput', 'labelInput', 'subInput'].forEach(function (id) {
+                document.getElementById(id).addEventListener('input', schedulePreview);
+            });
+            ['speedSelect', 'themeSelect'].forEach(function (id) {
+                document.getElementById(id).addEventListener('change', refreshPreview);
+            });
+
+            refreshPreview();
+        }
+
+        function applyTheme(t) {
+            signageWrapper.style.background = t.from;
+            signageWrapper.style.background = 'linear-gradient(100deg, ' + t.from + ' 0%, ' + t.to + ' 100%)';
+
+            document.getElementById('lineTop').style.background = t.accent;
+            document.getElementById('lineBottom').style.background = t.accent;
+
+            var badge = document.getElementById('badge');
+            badge.style.background = t.accent;
+            badge.style.color = t.badgeText;
+            document.getElementById('badgeArrow').style.borderLeftColor = t.accent;
+
+            track.style.color = t.text;
+            track.setAttribute('data-accent', t.accent);
+
+            // 左右フェード（背景色→透明）
+            var solid = 'rgba(' + t.rgb + ',0.95)';
+            var clear = 'rgba(' + t.rgb + ',0)';
+            document.getElementById('fadeL').style.background = 'linear-gradient(to right, ' + solid + ', ' + clear + ')';
+            document.getElementById('fadeR').style.background = 'linear-gradient(to left, ' + solid + ', ' + clear + ')';
+        }
+
+        function generateURL() {
+            var textValue  = document.getElementById('textInput').value;
+            var speedValue = document.getElementById('speedSelect').value;
+            var labelValue = document.getElementById('labelInput').value;
+            var subValue   = document.getElementById('subInput').value;
+            var themeValue = document.getElementById('themeSelect').value;
+
+            if (!textValue) {
+                alert('文字を入力してください');
+                return;
+            }
+
+            var baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            var generatedUrl = baseUrl +
+                '?text=' + encodeURIComponent(textValue) +
+                '&speed=' + speedValue +
+                '&label=' + encodeURIComponent(labelValue) +
+                '&sub=' + encodeURIComponent(subValue) +
+                '&theme=' + themeValue;
+
+            document.getElementById('resultUrl').innerText = generatedUrl;
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        function copyURL() {
+            var urlText = document.getElementById('resultUrl').innerText;
+
+            var textarea = document.createElement('textarea');
+            textarea.value = urlText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            alert('URLをコピーしました！サイネージ端末に設定してください。');
+        }
+
+        function makeBlock(text, accent) {
+            var block = document.createElement('div');
+            block.className = 'marquee-content';
+            block.appendChild(document.createTextNode(text));
+            var sep = document.createElement('span');
+            sep.className = 'sep';
+            sep.style.background = accent;
+            block.appendChild(sep);
+            return block;
+        }
+
+        function startSignage(text) {
+            var cleanText = text.replace(/[\r\n]+/g, ' ');
+            var accent = track.getAttribute('data-accent') || '#f2c14e';
+
+            // 同じ文章を2つ並べて配置
+            track.appendChild(makeBlock(cleanText, accent));
+            track.appendChild(makeBlock(cleanText, accent));
+
+            // 1周分の幅（px）を文字数から概算。ただし表示エリア幅を下回らない
+            // ※JavaScriptで画面幅を測定しないため測定エラーが発生しません
+            var oneLoopWidth = Math.max(cleanText.length * CHAR_WIDTH + GAP, MARQUEE_WIDTH);
+
+            // 速度(speed × 60px/秒)から所要時間を算出
+            var baseDuration = oneLoopWidth / (speed * 60);
+            if (baseDuration < 3) baseDuration = 3;
+
+            track.style.webkitAnimationDuration = baseDuration + 's';
+            track.style.animationDuration = baseDuration + 's';
+            track.className += ' is-animating';
+        }
+    </script>
+</body>
+</html>
