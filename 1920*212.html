@@ -195,13 +195,12 @@
         .badge-arrow {
             position: absolute;
             top: 0;
-            left: 340px;
+            left: 338px;           /* ラベル本体と2px重ねて継ぎ目を消す */
             width: 0;
             height: 0;
             border-top: 106px solid transparent;
             border-bottom: 106px solid transparent;
-            border-left: 36px solid #f2c14e;
-            z-index: 4;
+            border-left: 38px solid #f2c14e;  /* 先端は 338+38 = 376px */
         }
         .badge-main {
             display: block;
@@ -349,8 +348,8 @@
         <div class="badge" id="badge">
             <span class="badge-main" id="badgeMain"></span>
             <span class="badge-sub" id="badgeSub"></span>
+            <div class="badge-arrow" id="badgeArrow"></div>
         </div>
-        <div class="badge-arrow" id="badgeArrow"></div>
 
         <div class="fade-l" id="fadeL"></div>
         <div class="fade-r" id="fadeR"></div>
