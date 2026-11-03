@@ -493,9 +493,20 @@
             refreshPreview();
         }
 
+        // 背景グラデーション上の位置(0〜1)の色を "r,g,b" で返す
+        function bgColorAt(t, ratio) {
+            function hex(h, i) { return parseInt(h.substr(1 + i * 2, 2), 16); }
+            var out = [];
+            for (var i = 0; i < 3; i++) {
+                out.push(Math.round(hex(t.from, i) + (hex(t.to, i) - hex(t.from, i)) * ratio));
+            }
+            return out.join(',');
+        }
+
         function applyTheme(t) {
+            // 背景は水平グラデーション（色が x だけで決まるので、フェード色を正確に合わせられる）
             signageWrapper.style.background = t.from;
-            signageWrapper.style.background = 'linear-gradient(100deg, ' + t.from + ' 0%, ' + t.to + ' 100%)';
+            signageWrapper.style.background = 'linear-gradient(90deg, ' + t.from + ' 0%, ' + t.to + ' 100%)';
 
             document.getElementById('lineTop').style.background = t.accent;
             document.getElementById('lineBottom').style.background = t.accent;
@@ -507,11 +518,11 @@
             track.style.color = t.text;
             track.setAttribute('data-accent', t.accent);
 
-            // 左右フェード（背景色→透明）
-            var solid = 'rgba(' + t.rgb + ',0.95)';
-            var clear = 'rgba(' + t.rgb + ',0)';
-            document.getElementById('fadeL').style.background = 'linear-gradient(to right, ' + solid + ', ' + clear + ')';
-            document.getElementById('fadeR').style.background = 'linear-gradient(to left, ' + solid + ', ' + clear + ')';
+            // 左右フェード（その位置の背景色→透明）。背景と完全に同じ色にして段差を出さない
+            var cl = bgColorAt(t, 376 / 1920);    // 左フェードの付け根（矢印の先端位置）
+            var cr = bgColorAt(t, 1920 / 1920);   // 右フェードの付け根（右端）
+            document.getElementById('fadeL').style.background = 'linear-gradient(to right, rgba(' + cl + ',1), rgba(' + cl + ',0))';
+            document.getElementById('fadeR').style.background = 'linear-gradient(to left, rgba(' + cr + ',1), rgba(' + cr + ',0))';
         }
 
         function generateURL() {
