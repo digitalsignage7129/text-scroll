@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=1920, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>近隣向け 流れる文字サイネージ（1920*212 デザイン版）</title>
     <style>
         html, body {
@@ -301,7 +301,7 @@
 <body>
 
     <div class="admin-screen" id="adminScreen">
-        <h2>近隣向けサイネージ URL生成 (1920*212) <span style="font-size:12px;color:#888;font-weight:normal;">v8</span></h2>
+        <h2>近隣向けサイネージ URL生成 (1920*212) <span style="font-size:12px;color:#888;font-weight:normal;">v9</span></h2>
         <div class="preview-label">プレビュー（入力すると自動で反映されます）</div>
         <div class="preview-box"><iframe id="previewFrame" scrolling="no"></iframe></div>
         <div class="form-group">
@@ -394,7 +394,7 @@
 
 
         // &debug=1 を付けると、端末が報告している実際の表示領域のサイズを左上に表示する
-        function showDebug(iw, ih, w, h) {
+        function showDebug(inner, vvs, w, h) {
             var el = document.getElementById('dbg');
             if (!el) {
                 el = document.createElement('div');
@@ -402,17 +402,19 @@
                 el.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#000;color:#0f0;font:14px monospace;padding:2px 6px;';
                 document.body.appendChild(el);
             }
-            el.textContent = 'viewport ' + iw + 'x' + ih + '  /  fit ' + w + 'x' + h;
+            el.textContent = 'inner ' + inner + '  /  visual ' + vvs + '  /  fit ' + w + 'x' + h;
         }
 
         // 表示領域のサイズに合わせて全体を自動で拡大縮小し、見切れないようにする
         function fitToScreen() {
-            var w = window.innerWidth || document.documentElement.clientWidth;
-            var h = window.innerHeight || document.documentElement.clientHeight;
+            // 実際に見えている範囲（visualViewport）を最優先で使う。innerWidth は描画用の広さで、見える範囲と違うことがある
+            var vv = window.visualViewport;
+            var w = Math.max(1, (vv && vv.width) || window.innerWidth || document.documentElement.clientWidth);
+            var h = Math.max(1, (vv && vv.height) || window.innerHeight || document.documentElement.clientHeight);
             // 既定は、端末が報告する実際の表示領域にぴったり合わせる（決め打ちのサイズは使わない）
             var f = /[?&]fit=(\d+)x(\d+)/.exec(window.location.search);
             if (f) { w = parseInt(f[1], 10); h = parseInt(f[2], 10); }
-            if (/[?&]debug=1/.test(window.location.search)) showDebug(window.innerWidth, window.innerHeight, w, h);
+            if (/[?&]debug=1/.test(window.location.search)) showDebug(window.innerWidth + 'x' + window.innerHeight, (window.visualViewport ? Math.round(window.visualViewport.width) + 'x' + Math.round(window.visualViewport.height) : 'なし'), w, h);
             if (!w || !h) return;
             var sx = w / 1920, sy = h / 212;
             var t;
@@ -461,6 +463,13 @@
             fitToScreen();
             window.addEventListener('resize', fitToScreen);
             window.addEventListener('load', fitToScreen);
+            window.addEventListener('orientationchange', function () { setTimeout(fitToScreen, 50); });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', fitToScreen);
+                window.visualViewport.addEventListener('scroll', fitToScreen);
+            }
+            setTimeout(fitToScreen, 100);
+            setTimeout(fitToScreen, 500);
             applyTheme(THEMES[themeParam] || THEMES.navy);
             document.getElementById('badgeMain').textContent = (labelParam !== null && labelParam !== '') ? labelParam : 'お知らせ';
             document.getElementById('badgeSub').textContent  = (subParam !== null) ? subParam : 'INFORMATION';
