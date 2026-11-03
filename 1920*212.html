@@ -198,15 +198,17 @@
             z-index: 4;
             text-align: center;
         }
-        .badge-arrow {
+        /* ラベル全体を1つの矢印型ポリゴンとして描画（継ぎ目なし） */
+        .badge-shape {
             position: absolute;
             top: 0;
-            left: 338px;           /* ラベル本体と2px重ねて継ぎ目を消す */
-            width: 0;
-            height: 0;
-            border-top: 106px solid transparent;
-            border-bottom: 106px solid transparent;
-            border-left: 38px solid #f2c14e;  /* 先端は 338+38 = 376px */
+            left: 0;
+            width: 376px;
+            height: 212px;
+        }
+        .badge-main, .badge-sub {
+            position: relative;
+            z-index: 1;
         }
         .badge-main {
             display: block;
@@ -354,7 +356,9 @@
         <div class="badge" id="badge">
             <span class="badge-main" id="badgeMain"></span>
             <span class="badge-sub" id="badgeSub"></span>
-            <div class="badge-arrow" id="badgeArrow"></div>
+            <svg class="badge-shape" width="376" height="212" viewBox="0 0 376 212" xmlns="http://www.w3.org/2000/svg">
+                <polygon id="badgeShape" points="0,0 338,0 376,106 338,212 0,212" fill="#f2c14e" shape-rendering="geometricPrecision"></polygon>
+            </svg>
         </div>
 
         <div class="fade-l" id="fadeL"></div>
@@ -497,9 +501,8 @@
             document.getElementById('lineBottom').style.background = t.accent;
 
             var badge = document.getElementById('badge');
-            badge.style.background = t.accent;
             badge.style.color = t.badgeText;
-            document.getElementById('badgeArrow').style.borderLeftColor = t.accent;
+            document.getElementById('badgeShape').setAttribute('fill', t.accent);
 
             track.style.color = t.text;
             track.setAttribute('data-accent', t.accent);
