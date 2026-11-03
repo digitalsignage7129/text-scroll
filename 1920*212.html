@@ -27,7 +27,13 @@
             border-radius: 8px;
             display: none;
             color: #ffffff;
-            margin: 40px auto 0 auto;
+            margin: 20px auto 120px auto;  /* 下に余白（タスクバーに隠れないように） */
+        }
+        /* 管理画面のときだけスクロールを許可 */
+        html.admin-mode, html.admin-mode body {
+            height: auto;
+            min-height: 100%;
+            overflow: auto;
         }
         .admin-screen h2 {
             margin-top: 0;
@@ -417,6 +423,7 @@
             document.getElementById('badgeSub').textContent  = (subParam !== null) ? subParam : 'INFORMATION';
             startSignage(textParam);
         } else {
+            document.documentElement.className += ' admin-mode';
             adminScreen.style.display = 'block';
             initPreview();
         }
