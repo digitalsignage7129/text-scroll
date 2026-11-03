@@ -301,7 +301,7 @@
 <body>
 
     <div class="admin-screen" id="adminScreen">
-        <h2>近隣向けサイネージ URL生成 (1920*212) <span style="font-size:12px;color:#888;font-weight:normal;">v7</span></h2>
+        <h2>近隣向けサイネージ URL生成 (1920*212) <span style="font-size:12px;color:#888;font-weight:normal;">v8</span></h2>
         <div class="preview-label">プレビュー（入力すると自動で反映されます）</div>
         <div class="preview-box"><iframe id="previewFrame" scrolling="no"></iframe></div>
         <div class="form-group">
@@ -393,17 +393,26 @@
         var previewTimer = null;
 
 
+        // &debug=1 を付けると、端末が報告している実際の表示領域のサイズを左上に表示する
+        function showDebug(iw, ih, w, h) {
+            var el = document.getElementById('dbg');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'dbg';
+                el.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#000;color:#0f0;font:14px monospace;padding:2px 6px;';
+                document.body.appendChild(el);
+            }
+            el.textContent = 'viewport ' + iw + 'x' + ih + '  /  fit ' + w + 'x' + h;
+        }
+
         // 表示領域のサイズに合わせて全体を自動で拡大縮小し、見切れないようにする
         function fitToScreen() {
             var w = window.innerWidth || document.documentElement.clientWidth;
             var h = window.innerHeight || document.documentElement.clientHeight;
-            // 既定は 1387x150 に合わせる。&fit=横x縦 で別サイズ、&fit=off で実際の領域サイズに合わせる
+            // 既定は、端末が報告する実際の表示領域にぴったり合わせる（決め打ちのサイズは使わない）
             var f = /[?&]fit=(\d+)x(\d+)/.exec(window.location.search);
-            if (f) {
-                w = parseInt(f[1], 10); h = parseInt(f[2], 10);
-            } else if (!/[?&]fit=off/.test(window.location.search)) {
-                w = 1387; h = 150;   // この表示領域の実測サイズ（指定がなければこの大きさに合わせる）
-            }
+            if (f) { w = parseInt(f[1], 10); h = parseInt(f[2], 10); }
+            if (/[?&]debug=1/.test(window.location.search)) showDebug(window.innerWidth, window.innerHeight, w, h);
             if (!w || !h) return;
             var sx = w / 1920, sy = h / 212;
             var t;
